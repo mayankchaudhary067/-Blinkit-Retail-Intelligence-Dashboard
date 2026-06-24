@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Blinkit Retail Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#F3F2F1;--sidebar:#1A1A2E;--card:#FFFFFF;--yellow:#FFD814;
+    --green:#00B388;--orange:#FF6B35;--blue:#3A86FF;--purple:#7C5CBF;
+    --red:#E74C3C;--text:#252423;--muted:#605E5C;--border:#E1DFDD;
+    --hover:#F0EFED;
+  }
+  body{font-family:'Segoe UI','Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;overflow-x:hidden}
+
+  /* ── SIDEBAR ─────────────────────────────────────────── */
+  .sidebar{width:220px;min-height:100vh;background:var(--sidebar);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:100;transition:.3s}
+  .sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .sidebar-logo .brand{display:flex;align-items:center;gap:10px}
+  .sidebar-logo .icon{width:34px;height:34px;background:var(--yellow);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .sidebar-logo h1{font-size:14px;font-weight:700;color:#fff;line-height:1.2}
+  .sidebar-logo p{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px}
+  .nav-section{padding:12px 0 4px;font-size:9px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:1.5px;padding-left:18px}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:rgba(255,255,255,.6);font-size:12.5px;font-weight:500;border-left:3px solid transparent;transition:.2s}
+  .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+  .nav-item.active{background:rgba(255,216,20,.1);color:var(--yellow);border-left-color:var(--yellow)}
+  .nav-item .ni{font-size:15px;width:18px;text-align:center}
+  .sidebar-footer{margin-top:auto;padding:14px 18px;font-size:10px;color:rgba(255,255,255,.25);border-top:1px solid rgba(255,255,255,.06)}
+
+  /* ── MAIN ────────────────────────────────────────────── */
+  .main{margin-left:220px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+  /* top bar */
+  .topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .page-title{font-size:15px;font-weight:600;color:var(--text)}
+  .page-subtitle{font-size:11px;color:var(--muted)}
+  .topbar-right{display:flex;align-items:center;gap:12px}
+  .filter-chip{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:11px;color:var(--muted);cursor:pointer;transition:.2s}
+  .filter-chip:hover{border-color:#888;color:var(--text)}
+  .filter-chip.active{background:var(--yellow);border-color:var(--yellow);color:#000;font-weight:600}
+  .refresh-btn{background:var(--yellow);border:none;border-radius:6px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;color:#000;transition:.2s}
+  .refresh-btn:hover{background:#e8c400}
+
+  /* ── PAGES ───────────────────────────────────────────── */
+  .page{display:none;padding:20px 24px 28px;animation:fadeIn .25s ease}
+  .page.active{display:block}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ── KPI STRIP ───────────────────────────────────────── */
+  .kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+  .kpi-card{background:#fff;border-radius:8px;padding:16px 18px;border-top:3px solid transparent;box-shadow:0 1px 4px rgba(0,0,0,.06);position:relative;overflow:hidden;transition:.2s}
+  .kpi-card:hover{transform:translateY(-2px);box-shadow:0 4px 14px rgba(0,0,0,.1)}
+  .kpi-card::after{content:'';position:absolute;bottom:0;right:0;width:56px;height:56px;border-radius:50%;opacity:.06;transform:translate(18px,18px)}
+  .kpi-card.yellow{border-top-color:var(--yellow)}.kpi-card.yellow::after{background:var(--yellow)}
+  .kpi-card.green{border-top-color:var(--green)}.kpi-card.green::after{background:var(--green)}
+  .kpi-card.orange{border-top-color:var(--orange)}.kpi-card.orange::after{background:var(--orange)}
+  .kpi-card.blue{border-top-color:var(--blue)}.kpi-card.blue::after{background:var(--blue)}
+  .kpi-card.purple{border-top-color:var(--purple)}.kpi-card.purple::after{background:var(--purple)}
+  .kpi-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+  .kpi-value{font-size:26px;font-weight:700;color:var(--text);line-height:1}
+  .kpi-sub{font-size:10.5px;color:var(--muted);margin-top:6px;display:flex;align-items:center;gap:4px}
+  .kpi-badge{display:inline-flex;align-items:center;gap:2px;font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px}
+  .kpi-badge.up{background:#e6f9f4;color:var(--green)}
+  .kpi-badge.down{background:#fdecea;color:var(--red)}
+
+  /* ── GRID LAYOUTS ────────────────────────────────────── */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+  .grid-3-1{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+  .grid-1-2{display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:14px}
+
+  /* ── CHART CARD ──────────────────────────────────────── */
+  .chart-card{background:#fff;border-radius:8px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+  .chart-card:hover{box-shadow:0 3px 12px rgba(0,0,0,.09);transition:.2s}
+  .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .card-title{font-size:13px;font-weight:600;color:var(--text)}
+  .card-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+  .card-badge{font-size:10px;background:var(--bg);padding:3px 8px;border-radius:12px;color:var(--muted);font-weight:500}
+  .chart-wrap{position:relative}
+  .chart-wrap canvas{max-height:220px}
+  .chart-wrap.tall canvas{max-height:280px}
+  .chart-wrap.short canvas{max-height:160px}
+
+  /* ── TABLE ───────────────────────────────────────────── */
+  .data-table{width:100%;border-collapse:collapse;font-size:12px}
+  .data-table th{background:#F8F7F6;padding:8px 12px;text-align:left;font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;border-bottom:2px solid var(--border)}
+  .data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+  .data-table tr:hover td{background:#FAFAF9}
+  .data-table tr:last-child td{border-bottom:none}
+  .rank-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;background:var(--bg);color:var(--muted)}
+  .rank-badge.gold{background:#FFF3CD;color:#B8860B}
+  .rank-badge.silver{background:#F0F0F0;color:#666}
+  .rank-badge.bronze{background:#FFF0E6;color:#A0522D}
+
+  /* ── BAR INLINE ──────────────────────────────────────── */
+  .inline-bar{height:6px;background:var(--bg);border-radius:3px;overflow:hidden;margin-top:4px}
+  .inline-bar-fill{height:100%;border-radius:3px;background:var(--yellow)}
+
+  /* ── STATUS PILL ─────────────────────────────────────── */
+  .pill{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10.5px;font-weight:600}
+  .pill.green{background:#e6f9f4;color:var(--green)}
+  .pill.orange{background:#fff3e9;color:var(--orange)}
+  .pill.red{background:#fdecea;color:var(--red)}
+  .pill.blue{background:#edf3ff;color:var(--blue)}
+  .pill.yellow{background:#fffae0;color:#997700}
+
+  /* ── DONUT LEGEND ────────────────────────────────────── */
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+  .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+  /* ── SECTION DIVIDER ─────────────────────────────────── */
+  .section-head{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border)}
+
+  /* ── SPARKLINE NUMBERS ───────────────────────────────── */
+  .metric-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+  .metric-row:last-child{border-bottom:none}
+  .metric-label{font-size:12px;color:var(--text)}
+  .metric-val{font-size:13px;font-weight:700;color:var(--text)}
+  .metric-bar-wrap{flex:1;margin:0 12px;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+  .metric-bar-inner{height:100%;border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand">
+      <div class="icon">🛒</div>
+      <div>
+        <h1>Blinkit BI</h1>
+        <p>Retail Intelligence</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav-section">Analytics</div>
+  <div class="nav-item active" onclick="showPage('overview',this)"><span class="ni">📊</span> Overview</div>
+  <div class="nav-item" onclick="showPage('revenue',this)"><span class="ni">💰</span> Revenue</div>
+  <div class="nav-item" onclick="showPage('delivery',this)"><span class="ni">🚚</span> Delivery & Ops</div>
+  <div class="nav-item" onclick="showPage('customers',this)"><span class="ni">👥</span> Customers</div>
+  <div class="nav-item" onclick="showPage('products',this)"><span class="ni">📦</span> Products</div>
+
+  <div class="nav-section">Data</div>
+  <div class="nav-item" onclick="showPage('data',this)"><span class="ni">🗂️</span> Raw Data</div>
+
+  <div class="sidebar-footer">FY 2024 · Synthetic Dataset<br>v1.0 — Blinkit BI</div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div>
+        <div class="page-title" id="pageTitle">Executive Overview</div>
+        <div class="page-subtitle">Last updated: Dec 31, 2024 &nbsp;·&nbsp; FY 2024</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="filter-chip active" onclick="toggleFilter(this,'All')">All Cities</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'Q4')">Q4 Focus</div>
+      <div class="filter-chip" onclick="toggleFilter(this,'Premium')">Premium Seg</div>
+      <button class="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 1 — OVERVIEW
+  ══════════════════════════════════════════════════════ -->
+  <div class="page active" id="page-overview">
+
+    <div class="kpi-strip">
+      <div class="kpi-card yellow">
+        <div class="kpi-label">Total Revenue</div>
+        <div class="kpi-value">₹203.1M</div>
+        <div class="kpi-sub"><span class="kpi-badge up">↑ 12.4%</span> vs last year</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Total Orders</div>
+        <div class="kpi-value">86,376</div>
+        <div class="kpi-sub"><span class="kpi-badge up">↑ 8.7%</span> YoY growth</div>
+      </div>
+      <div class="kpi-card orange">
+        <div class="kpi-label">Avg Order Value</div>
+        <div class="kpi-value">₹2,351</div>
+        <div class="kpi-sub"><span class="kpi-badge up">↑ 3.2%</span> per order</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Avg Rating</div>
+        <div class="kpi-value">3.75 ★</div>
+        <div class="kpi-sub"><span class="kpi-badge down">↓ 0.1</span> from target</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">On-Time Delivery</div>
+        <div class="kpi-value">87.6%</div>
+        <div class="kpi-sub"><span class="kpi-badge up">↑ 2.1%</span> improvement</div>
+      </div>
+    </div>
+
+    <div class="grid-3-1">
+      <div class="chart-card">
+        <div class="card-header">
+          <div><div class="card-title">Monthly Revenue Trend</div><div class="card-sub">Jan – Dec 2024 &nbsp;·&nbsp; ₹ Thousands</div></div>
+          <span class="card-badge">Bar + Line</span>
+        </div>
+        <div class="chart-wrap tall"><canvas id="monthlyChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Quarterly Split</div><div class="card-sub">Revenue share</div></div></div>
+        <div class="chart-wrap"><canvas id="quarterChart"></canvas></div>
+        <div class="legend" id="qLegend"></div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Revenue by City</div><div class="card-sub">Top 10 cities</div></div></div>
+        <div class="chart-wrap tall"><canvas id="cityChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Category Revenue</div><div class="card-sub">All 10 categories</div></div></div>
+        <div class="chart-wrap tall"><canvas id="catChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Payment Methods</div><div class="card-sub">Order volume</div></div></div>
+        <div class="chart-wrap tall"><canvas id="payChart"></canvas></div>
+        <div class="legend" id="payLegend"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 2 — REVENUE
+  ══════════════════════════════════════════════════════ -->
+  <div class="page" id="page-revenue">
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card yellow"><div class="kpi-label">Total Revenue</div><div class="kpi-value">₹203.1M</div><div class="kpi-sub">FY 2024 Gross</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Best Month</div><div class="kpi-value">Jul ₹18.5K</div><div class="kpi-sub">Peak month</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Top City</div><div class="kpi-value">Mumbai</div><div class="kpi-sub">₹44.4M revenue</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Top Category</div><div class="kpi-value">Frozen Food</div><div class="kpi-sub">₹20.8M revenue</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Monthly Revenue vs Orders</div><div class="card-sub">Dual axis — Revenue (₹K) & Orders</div></div></div>
+        <div class="chart-wrap tall"><canvas id="revOrderChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Daily Revenue Trend</div><div class="card-sub">Last 90 days (Oct–Dec)</div></div></div>
+        <div class="chart-wrap tall"><canvas id="dailyChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">City Revenue Ranking</div></div></div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>City</th><th>Revenue (₹K)</th><th>Share</th><th>Bar</th></tr></thead>
+          <tbody id="cityTable"></tbody>
+        </table>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Category Revenue Ranking</div></div></div>
+        <table class="data-table">
+          <thead><tr><th>#</th><th>Category</th><th>Revenue (₹K)</th><th>Share</th></tr></thead>
+          <tbody id="catTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 3 — DELIVERY & OPS
+  ══════════════════════════════════════════════════════ -->
+  <div class="page" id="page-delivery">
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card green"><div class="kpi-label">Avg On-Time Rate</div><div class="kpi-value">87.6%</div><div class="kpi-sub">Pan-India average</div></div>
+      <div class="kpi-card yellow"><div class="kpi-label">Avg Delivery Time</div><div class="kpi-value">25.6 min</div><div class="kpi-sub">All cities</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Best City</div><div class="kpi-value">Jaipur</div><div class="kpi-sub">88.1% on-time</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Total Deliveries</div><div class="kpi-value">86,376</div><div class="kpi-sub">FY 2024</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">On-Time Rate by City</div><div class="card-sub">% deliveries on time</div></div></div>
+        <div class="chart-wrap tall"><canvas id="deliveryOTChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Avg Delivery Time by City</div><div class="card-sub">Minutes</div></div></div>
+        <div class="chart-wrap tall"><canvas id="deliveryMinChart"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-3-1">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Payment Method Distribution</div><div class="card-sub">Order count by payment type</div></div></div>
+        <div class="chart-wrap"><canvas id="pay2Chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Delivery SLA Summary</div></div></div>
+        <div style="padding-top:8px">
+          <div class="metric-row"><span class="metric-label">Mumbai</span><div class="metric-bar-wrap"><div class="metric-bar-inner" style="width:87%;background:#3A86FF"></div></div><span class="metric-val">87.2%</span></div>
+          <div class="metric-row"><span class="metric-label">Delhi</span><div class="metric-bar-wrap"><div class="metric-bar-inner" style="width:88%;background:#00B388"></div></div><span class="metric-val">87.9%</span></div>
+          <div class="metric-row"><span class="metric-label">Bangalore</span><div class="metric-bar-wrap"><div class="metric-bar-inner" style="width:87%;background:#FF6B35"></div></div><span class="metric-val">87.1%</span></div>
+          <div class="metric-row"><span class="metric-label">Hyderabad</span><div class="metric-bar-wrap"><div class="metric-bar-inner" style="width:87%;background:#7C5CBF"></div></div><span class="metric-val">87.3%</span></div>
+          <div class="metric-row"><span class="metric-label">Jaipur</span><div class="metric-bar-wrap"><div class="metric-bar-inner" style="width:88%;background:#FFD814"></div></div><span class="metric-val">88.1%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 4 — CUSTOMERS
+  ══════════════════════════════════════════════════════ -->
+  <div class="page" id="page-customers">
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card yellow"><div class="kpi-label">Total Customers</div><div class="kpi-value">5,000</div><div class="kpi-sub">Active base</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Premium Customers</div><div class="kpi-value">1,017</div><div class="kpi-sub">20.3% of base</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Avg Lifetime Value</div><div class="kpi-value">₹8,241</div><div class="kpi-sub">Per customer</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Premium Avg LTV</div><div class="kpi-value">₹28,053</div><div class="kpi-sub">High-value segment</div></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Customer Segments</div><div class="card-sub">RFM-based classification</div></div></div>
+        <div class="chart-wrap"><canvas id="segChart"></canvas></div>
+        <div class="legend" id="segLegend"></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Age Group Distribution</div><div class="card-sub">Customer age spread</div></div></div>
+        <div class="chart-wrap"><canvas id="ageChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Avg LTV by Segment</div><div class="card-sub">₹ per customer</div></div></div>
+        <div class="chart-wrap"><canvas id="ltvChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Gender Split</div></div></div>
+        <div class="chart-wrap short"><canvas id="genderChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Segment Health Overview</div></div></div>
+        <table class="data-table">
+          <thead><tr><th>Segment</th><th>Count</th><th>Share</th><th>Avg LTV</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Premium</strong></td><td>1,017</td><td>20.3%</td><td>₹28,053</td><td><span class="pill green">Healthy</span></td></tr>
+            <tr><td><strong>Regular</strong></td><td>1,976</td><td>39.5%</td><td>₹6,421</td><td><span class="pill blue">Growing</span></td></tr>
+            <tr><td><strong>New</strong></td><td>1,541</td><td>30.8%</td><td>₹1,111</td><td><span class="pill yellow">Onboard</span></td></tr>
+            <tr><td><strong>Churned</strong></td><td>466</td><td>9.3%</td><td>₹1,620</td><td><span class="pill red">At Risk</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 5 — PRODUCTS
+  ══════════════════════════════════════════════════════ -->
+  <div class="page" id="page-products">
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,1fr)">
+      <div class="kpi-card yellow"><div class="kpi-label">Total SKUs</div><div class="kpi-value">10</div><div class="kpi-sub">Unique products</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Low Stock Alerts</div><div class="kpi-value">34</div><div class="kpi-sub">City-level alerts</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Avg Gross Margin</div><div class="kpi-value">48.2%</div><div class="kpi-sub">Blended margin</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Top Rated SKU</div><div class="kpi-value">4.6 ★</div><div class="kpi-sub">Pampers Diapers</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Product Ratings</div><div class="card-sub">Avg customer rating per SKU</div></div></div>
+        <div class="chart-wrap tall"><canvas id="ratingChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="card-header"><div><div class="card-title">Product Inventory Status</div><div class="card-sub">Stock vs reorder level</div></div></div>
+        <table class="data-table">
+          <thead><tr><th>Product</th><th>Category</th><th>Margin</th><th>Rating</th><th>Stock</th></tr></thead>
+          <tbody>
+            <tr><td>Pampers Diapers</td><td>Baby Care</td><td>28%</td><td>4.6 ★</td><td><span class="pill green">OK</span></td></tr>
+            <tr><td>Red Bull 250ml</td><td>Beverages</td><td>52%</td><td>4.5 ★</td><td><span class="pill green">OK</span></td></tr>
+            <tr><td>Surf Excel 1kg</td><td>Cleaning</td><td>38%</td><td>4.4 ★</td><td><span class="pill orange">Watch</span></td></tr>
+            <tr><td>Head & Shoulders</td><td>Personal Care</td><td>35%</td><td>4.3 ★</td><td><span class="pill green">OK</span></td></tr>
+            <tr><td>Maggi Noodles</td><td>Frozen Food</td><td>61%</td><td>4.3 ★</td><td><span class="pill orange">Watch</span></td></tr>
+            <tr><td>Amul Butter</td><td>Dairy</td><td>42%</td><td>4.3 ★</td><td><span class="pill green">OK</span></td></tr>
+            <tr><td>Lay's Classic</td><td>Snacks</td><td>62%</td><td>4.4 ★</td><td><span class="pill red">Low</span></td></tr>
+            <tr><td>Chicken Breast</td><td>Meat</td><td>30%</td><td>4.2 ★</td><td><span class="pill red">Low</span></td></tr>
+            <tr><td>Parle-G 800g</td><td>Bakery</td><td>70%</td><td>4.1 ★</td><td><span class="pill green">OK</span></td></tr>
+            <tr><td>Tomatoes 1kg</td><td>Fruits & Veg</td><td>75%</td><td>3.9 ★</td><td><span class="pill orange">Watch</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       PAGE 6 — RAW DATA
+  ══════════════════════════════════════════════════════ -->
+  <div class="page" id="page-data">
+    <div class="chart-card" style="margin-bottom:14px">
+      <div class="card-header">
+        <div><div class="card-title">Dataset Summary — Blinkit FY 2024</div><div class="card-sub">Synthetic datasets ready for Power BI / Excel import</div></div>
+      </div>
+      <table class="data-table">
+        <thead><tr><th>Dataset</th><th>Rows</th><th>Columns</th><th>Size</th><th>Description</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>orders.csv</strong></td><td>86,376</td><td>14</td><td>~8 MB</td><td>Order transactions with city, category, revenue, payment, rating</td><td><span class="pill green">Ready</span></td></tr>
+          <tr><td><strong>customers.csv</strong></td><td>5,000</td><td>10</td><td>~450 KB</td><td>Customer profiles — segment, LTV, NPS, age, gender</td><td><span class="pill green">Ready</span></td></tr>
+          <tr><td><strong>products.csv</strong></td><td>100</td><td>12</td><td>~18 KB</td><td>SKU × city inventory — stock, margin, ratings</td><td><span class="pill green">Ready</span></td></tr>
+          <tr><td><strong>delivery_performance.csv</strong></td><td>3,650</td><td>9</td><td>~220 KB</td><td>Daily city-level delivery — on-time rate, SLA, rider rating</td><td><span class="pill green">Ready</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-card">
+      <div class="card-header"><div><div class="card-title">Power BI Import Guide</div><div class="card-sub">Step-by-step setup</div></div></div>
+      <table class="data-table">
+        <thead><tr><th>Step</th><th>Action</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><span class="rank-badge gold">1</span></td><td><strong>Open Power BI Desktop</strong></td><td>Download free from microsoft.com/power-bi</td></tr>
+          <tr><td><span class="rank-badge silver">2</span></td><td><strong>Get Data → Text/CSV</strong></td><td>Import all 4 CSV files one by one</td></tr>
+          <tr><td><span class="rank-badge bronze">3</span></td><td><strong>Create Relationships</strong></td><td>orders.City ↔ delivery.City &nbsp;|&nbsp; orders.Category ↔ products.Category</td></tr>
+          <tr><td><span class="rank-badge" style="background:#e8f4fd;color:#3A86FF">4</span></td><td><strong>Build Visuals</strong></td><td>Use Bar, Line, Donut, Map, KPI card visuals</td></tr>
+          <tr><td><span class="rank-badge" style="background:#e6f9f4;color:#00B388">5</span></td><td><strong>Apply Blinkit Theme</strong></td><td>Primary: #FFD814 · Dark: #1A1A2E · Accent: #00C897</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const D={
+  monthly:{months:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],revenue:[16274,16403,17262,16499,17651,17491,18462,17552,17163,17548,15434,15366],orders:[6996,6833,7436,7034,7445,7374,7873,7446,7378,7416,6581,6564]},
+  city:{names:["Mumbai","Delhi","Bangalore","Hyderabad","Pune","Chennai","Kolkata","Ahmedabad","Lucknow","Jaipur"],revenue:[44367,40400,30632,20243,16420,16266,13978,8283,6411,6105]},
+  category:{names:["Frozen Food","Cleaning","Meat & Seafood","Beverages","Snacks","Personal Care","Dairy","Baby Care","Bakery","Fruits & Veg"],revenue:[20805,20602,20599,20459,20415,20291,20145,20111,19939,19741]},
+  payment:{methods:["UPI","Credit Card","Debit Card","Cash on Del","Wallet"],counts:[35949,19174,15676,8699,6878]},
+  quarter:{labels:["Q1","Q2","Q3","Q4"],revenue:[49.94,51.64,53.18,48.35]},
+  segment:{labels:["Regular","New","Premium","Churned"],counts:[1976,1541,1017,466],ltv:[6421,1111,28053,1620]},
+  age:{labels:["18-24","25-34","35-44","45-54","55+"],counts:[985,1729,1288,612,386]},
+  delivery:{cities:["Ahmedabad","Bangalore","Chennai","Delhi","Hyderabad","Jaipur","Kolkata","Lucknow","Mumbai","Pune"],ontime:[87.6,87.1,87.6,87.9,87.3,88.1,87.6,87.4,87.2,87.7],mins:[25.3,26.5,25.6,25.7,25.4,24.8,25.2,25.6,25.9,24.8]},
+  daily:{dates:["Oct 1","Oct 8","Oct 15","Oct 22","Oct 29","Nov 5","Nov 12","Nov 19","Nov 26","Dec 3","Dec 10","Dec 17","Dec 24","Dec 30"],revenue:[426,523,417,447,353,807,426,372,479,605,413,840,821,524]},
+  products:{names:["Pampers Diapers","Lay's Classic","Red Bull","Surf Excel","Head & Shoulders","Maggi Noodles","Amul Butter","Good Day","Chicken Breast","Tomatoes"],ratings:[4.6,4.4,4.5,4.4,4.3,4.3,4.3,4.3,4.2,3.9]},
+};
+
+const COLORS={yellow:'#FFD814',green:'#00B388',orange:'#FF6B35',blue:'#3A86FF',purple:'#7C5CBF',red:'#E74C3C'};
+const PALETTE=['#FFD814','#3A86FF','#00B388','#FF6B35','#7C5CBF','#E74C3C','#06D6A0','#EF476F','#118AB2','#073B4C'];
+
+Chart.defaults.font.family="'Segoe UI','Inter',sans-serif";
+Chart.defaults.plugins.legend.display=false;
+Chart.defaults.plugins.tooltip.backgroundColor='rgba(26,26,46,0.9)';
+Chart.defaults.plugins.tooltip.titleColor='#FFD814';
+Chart.defaults.plugins.tooltip.bodyColor='#fff';
+Chart.defaults.plugins.tooltip.padding=10;
+Chart.defaults.plugins.tooltip.cornerRadius=6;
+
+function mkChart(id,cfg){
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  return new Chart(ctx,cfg);
+}
+
+// ── MONTHLY REVENUE (combo bar+line) ────────────────────────────────────────
+mkChart('monthlyChart',{type:'bar',data:{labels:D.monthly.months,datasets:[
+  {label:'Revenue (₹K)',data:D.monthly.revenue,backgroundColor:'rgba(255,216,20,0.85)',borderRadius:5,yAxisID:'y'},
+  {label:'Orders',data:D.monthly.orders,type:'line',borderColor:'#3A86FF',backgroundColor:'rgba(58,134,255,0.08)',pointBackgroundColor:'#3A86FF',pointRadius:4,tension:.4,yAxisID:'y1'}
+]},options:{responsive:true,maintainAspectRatio:true,scales:{y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#3A86FF',font:{size:10}}}},plugins:{legend:{display:true,position:'top',labels:{font:{size:11},color:'#444',boxWidth:12}}}}});
+
+// ── QUARTERLY DONUT ──────────────────────────────────────────────────────────
+mkChart('quarterChart',{type:'doughnut',data:{labels:D.quarter.labels,datasets:[{data:D.quarter.revenue,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{responsive:true,cutout:'65%',plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ₹${c.raw}M`}}}}});
+const qL=document.getElementById('qLegend');
+D.quarter.labels.forEach((l,i)=>{qL.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${PALETTE[i]}"></div>${l}: ₹${D.quarter.revenue[i]}M</div>`});
+
+// ── CITY BAR ─────────────────────────────────────────────────────────────────
+mkChart('cityChart',{type:'bar',data:{labels:D.city.names,datasets:[{data:D.city.revenue,backgroundColor:D.city.names.map((_,i)=>i===0?COLORS.yellow:i===1?COLORS.blue:'rgba(58,134,255,0.55)'),borderRadius:4}]},options:{responsive:true,indexAxis:'y',scales:{x:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}},y:{ticks:{color:'#444',font:{size:11}}}},plugins:{tooltip:{callbacks:{label:c=>`₹${c.raw.toLocaleString()}K`}}}}});
+
+// ── CATEGORY BAR ─────────────────────────────────────────────────────────────
+mkChart('catChart',{type:'bar',data:{labels:D.category.names,datasets:[{data:D.category.revenue,backgroundColor:'rgba(0,179,136,0.8)',borderRadius:4}]},options:{responsive:true,indexAxis:'y',scales:{x:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}},y:{ticks:{color:'#444',font:{size:10}}}},plugins:{tooltip:{callbacks:{label:c=>`₹${c.raw.toLocaleString()}K`}}}}});
+
+// ── PAYMENT DONUT ────────────────────────────────────────────────────────────
+mkChart('payChart',{type:'doughnut',data:{labels:D.payment.methods,datasets:[{data:D.payment.counts,backgroundColor:PALETTE,borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{responsive:true,cutout:'60%'}});
+const pL=document.getElementById('payLegend');
+D.payment.methods.forEach((m,i)=>{pL.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${PALETTE[i]}"></div>${m}</div>`});
+
+// ── REV + ORDERS DUAL ────────────────────────────────────────────────────────
+mkChart('revOrderChart',{type:'bar',data:{labels:D.monthly.months,datasets:[
+  {label:'Revenue (₹K)',data:D.monthly.revenue,backgroundColor:'rgba(255,216,20,0.85)',borderRadius:5,yAxisID:'y'},
+  {label:'Orders',data:D.monthly.orders,type:'line',borderColor:'#FF6B35',pointBackgroundColor:'#FF6B35',pointRadius:4,tension:.4,fill:false,yAxisID:'y1'}
+]},options:{responsive:true,scales:{y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}},y1:{position:'right',grid:{drawOnChartArea:false},ticks:{color:'#FF6B35',font:{size:10}}}},plugins:{legend:{display:true,position:'top',labels:{font:{size:11},color:'#444',boxWidth:12}}}}});
+
+// ── DAILY LINE ───────────────────────────────────────────────────────────────
+mkChart('dailyChart',{type:'line',data:{labels:D.daily.dates,datasets:[{label:'Daily Revenue (₹K)',data:D.daily.revenue,borderColor:'#7C5CBF',backgroundColor:'rgba(124,92,191,0.1)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#7C5CBF'}]},options:{responsive:true,scales:{x:{ticks:{color:'#888',font:{size:9},maxRotation:45}},y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}}}}});
+
+// ── CITY TABLE ───────────────────────────────────────────────────────────────
+const maxRev=Math.max(...D.city.revenue);
+const totRev=D.city.revenue.reduce((a,b)=>a+b,0);
+const ctb=document.getElementById('cityTable');
+D.city.names.forEach((city,i)=>{
+  const pct=(D.city.revenue[i]/totRev*100).toFixed(1);
+  const barW=(D.city.revenue[i]/maxRev*100).toFixed(0);
+  const badge=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  ctb.innerHTML+=`<tr><td><span class="rank-badge ${badge}">${i+1}</span></td><td>${city}</td><td>₹${D.city.revenue[i].toLocaleString()}</td><td>${pct}%</td><td><div class="inline-bar"><div class="inline-bar-fill" style="width:${barW}%"></div></div></td></tr>`;
+});
+
+// ── CAT TABLE ────────────────────────────────────────────────────────────────
+const totCat=D.category.revenue.reduce((a,b)=>a+b,0);
+const catb=document.getElementById('catTable');
+D.category.names.forEach((cat,i)=>{
+  const pct=(D.category.revenue[i]/totCat*100).toFixed(1);
+  const badge=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+  catb.innerHTML+=`<tr><td><span class="rank-badge ${badge}">${i+1}</span></td><td>${cat}</td><td>₹${D.category.revenue[i].toLocaleString()}</td><td>${pct}%</td></tr>`;
+});
+
+// ── DELIVERY CHARTS ──────────────────────────────────────────────────────────
+mkChart('deliveryOTChart',{type:'bar',data:{labels:D.delivery.cities,datasets:[{data:D.delivery.ontime,backgroundColor:D.delivery.ontime.map(v=>v>=88?COLORS.green:v>=87?COLORS.yellow:COLORS.orange),borderRadius:5}]},options:{responsive:true,scales:{x:{ticks:{color:'#444',font:{size:10}}},y:{min:85,max:90,grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10},callback:v=>v+'%'}}},plugins:{tooltip:{callbacks:{label:c=>`${c.raw}% on-time`}}}}});
+mkChart('deliveryMinChart',{type:'bar',data:{labels:D.delivery.cities,datasets:[{data:D.delivery.mins,backgroundColor:'rgba(58,134,255,0.75)',borderRadius:5}]},options:{responsive:true,scales:{x:{ticks:{color:'#444',font:{size:10}}},y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10},callback:v=>v+' min'}}},plugins:{tooltip:{callbacks:{label:c=>`${c.raw} min avg`}}}}});
+mkChart('pay2Chart',{type:'bar',data:{labels:D.payment.methods,datasets:[{data:D.payment.counts,backgroundColor:PALETTE,borderRadius:5}]},options:{responsive:true,scales:{x:{ticks:{color:'#444',font:{size:10}}},y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}}}}});
+
+// ── SEGMENT DONUT ────────────────────────────────────────────────────────────
+mkChart('segChart',{type:'doughnut',data:{labels:D.segment.labels,datasets:[{data:D.segment.counts,backgroundColor:[COLORS.blue,COLORS.yellow,COLORS.green,COLORS.red],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{responsive:true,cutout:'62%'}});
+const sL=document.getElementById('segLegend');
+D.segment.labels.forEach((l,i)=>{
+  const c=[COLORS.blue,COLORS.yellow,COLORS.green,COLORS.red][i];
+  sL.innerHTML+=`<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${l}: ${D.segment.counts[i]}</div>`;
+});
+
+// ── AGE BAR ──────────────────────────────────────────────────────────────────
+mkChart('ageChart',{type:'bar',data:{labels:D.age.labels,datasets:[{data:D.age.counts,backgroundColor:['rgba(255,216,20,.9)','rgba(58,134,255,.9)','rgba(0,179,136,.9)','rgba(255,107,53,.9)','rgba(124,92,191,.9)'],borderRadius:5}]},options:{responsive:true,scales:{x:{ticks:{color:'#444',font:{size:11}}},y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}}}}});
+
+// ── LTV BAR ──────────────────────────────────────────────────────────────────
+mkChart('ltvChart',{type:'bar',data:{labels:D.segment.labels,datasets:[{data:D.segment.ltv,backgroundColor:[COLORS.blue,COLORS.yellow,COLORS.green,COLORS.red],borderRadius:5}]},options:{responsive:true,scales:{x:{ticks:{color:'#444',font:{size:11}}},y:{grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10},callback:v=>'₹'+v.toLocaleString()}}},plugins:{tooltip:{callbacks:{label:c=>`₹${c.raw.toLocaleString()} avg LTV`}}}}});
+
+// ── GENDER ───────────────────────────────────────────────────────────────────
+mkChart('genderChart',{type:'doughnut',data:{labels:['Male','Female'],datasets:[{data:[2600,2400],backgroundColor:[COLORS.blue,COLORS.orange],borderWidth:2,borderColor:'#fff',hoverOffset:8}]},options:{responsive:true,cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},color:'#444'}}}}});
+
+// ── PRODUCT RATINGS ──────────────────────────────────────────────────────────
+mkChart('ratingChart',{type:'bar',data:{labels:D.products.names,datasets:[{data:D.products.ratings,backgroundColor:D.products.ratings.map(r=>r>=4.5?COLORS.green:r>=4.2?COLORS.yellow:COLORS.orange),borderRadius:5}]},options:{responsive:true,indexAxis:'y',scales:{x:{min:3.5,max:5,grid:{color:'#f0efed'},ticks:{color:'#888',font:{size:10}}},y:{ticks:{color:'#444',font:{size:10}}}},plugins:{tooltip:{callbacks:{label:c=>`${c.raw} ★`}}}}});
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+const pageTitles={'overview':'Executive Overview','revenue':'Revenue Analysis','delivery':'Delivery & Operations','customers':'Customer Analytics','products':'Product & Inventory','data':'Dataset & Import Guide'};
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('pageTitle').textContent=pageTitles[id]||id;
+}
+function toggleFilter(el,type){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
